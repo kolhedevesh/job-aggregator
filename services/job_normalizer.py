@@ -18,6 +18,15 @@ def normalize_job(raw: Dict) -> Job:
     short = _first(raw.get("snippet"), raw.get("description"), raw.get("summary"))
     employment = _first(raw.get("employment_type"), raw.get("job_type"), "")
     apply_link = _first(raw.get("url"), raw.get("link"), raw.get("apply_link"))
+    # fallback: look for related_links or first nested url
+    if not apply_link:
+        rl = raw.get("related_links") or raw.get("other_links") or raw.get("links")
+        if isinstance(rl, list) and rl:
+            first = rl[0]
+            if isinstance(first, dict) and "url" in first:
+                apply_link = first.get("url")
+            elif isinstance(first, str):
+                apply_link = first
     source_site = _first(raw.get("source"), raw.get("site"), "unknown")
 
     # Truncate short description to a few lines (approx 240 chars)

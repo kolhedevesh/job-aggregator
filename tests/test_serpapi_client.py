@@ -1,0 +1,48 @@
+import json
+from types import SimpleNamespace
+
+import pytest
+
+import services.serpapi_client as sc
+
+
+class DummyResp:
+    def __init__(self, data, status=200):
+        self._data = data
+        self.status_code = status
+
+    def raise_for_status(self):
+        if not (200 <= self.status_code < 300):
+            raise Exception("HTTP error")
+
+    def json(self):
+        return self._data
+
+
+def test_search_parses_jobs(monkeypatch):
+    sample = {"jobs_results": [{"title": "Dev", "company_name": "X", "url": "http://a"}]}
+
+    def fake_get(url, params, timeout):
+        return DummyResp(sample)
+
+    monkeypatch.setattr(sc.requests, "get", fake_get)
+    client = sc.SerpApiClient(api_key="key")
+    res = client.search("dev")
+    assert isinstance(res, list)
+    assert res[0]["title"] == "Dev"
+
+
+def test_search_retry_simplifies(monkeypatch):
+    # First call fails, second succeeds
+    calls = {"n": 0}
+
+    def fake_get(url, params, timeout):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return DummyResp({}, status=500)
+        return DummyResp({"jobs_results": [{"title": "Dev"}]})
+
+    monkeypatch.setattr(sc.requests, "get", fake_get)
+    client = sc.SerpApiClient(api_key="k")
+    res = client.search("software engineer", location="" )
+    assert len(res) == 1

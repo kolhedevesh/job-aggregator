@@ -103,7 +103,6 @@ def main() -> None:
                     st.session_state.page = page + 1
                     st.experimental_rerun()
 
-            # LLM host/model from env
             ollama_host = os.getenv("OLLAMA_HOST")
             ollama_model = os.getenv("OLLAMA_MODEL")
 
