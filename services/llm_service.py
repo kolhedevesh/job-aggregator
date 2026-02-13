@@ -41,6 +41,25 @@ class LLMService:
                 return data.get("content")
         return None
 
+    def summarize_description(self, text: str, max_tokens: int = 350) -> Optional[str]:
+        """Produce a concise professional summary (120-150 words) focusing on
+        role, responsibilities, key skills, seniority, location, and company context.
+        """
+        if not text:
+            return None
+        prompt = (
+            "Write a concise professional summary (120-150 words) of the following job description."
+            " Focus on the role, main responsibilities, key technical and soft skills, seniority level,"
+            " location, and company context. Use a neutral professional tone.\n\n" + text
+        )
+        payload = {"model": self.model, "prompt": prompt, "max_tokens": max_tokens}
+        data = self._post(payload)
+        if not data:
+            return None
+        if isinstance(data, dict):
+            return data.get("text") or data.get("content")
+        return None
+
     def extract_skills(self, text: str) -> Optional[str]:
         if not text:
             return None
@@ -68,3 +87,9 @@ def cached_summarize(host: Optional[str], model: Optional[str], text: str, max_t
 def cached_extract_skills(host: Optional[str], model: Optional[str], text: str) -> Optional[str]:
     svc = LLMService(host=host, model=model)
     return svc.extract_skills(text)
+
+
+@st.cache_data(ttl=60 * 60 * 24)
+def cached_summarize_description(host: Optional[str], model: Optional[str], text: str) -> Optional[str]:
+    svc = LLMService(host=host, model=model)
+    return svc.summarize_description(text)

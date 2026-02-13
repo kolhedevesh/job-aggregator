@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -10,3 +11,4 @@ class Job:
     employment_type: str
     source_site: str
     apply_link: str
+    summary: Optional[str] = None

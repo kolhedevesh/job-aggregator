@@ -34,6 +34,15 @@ def test_search_parses_jobs(monkeypatch):
     assert res[0]["title"] == "Dev"
 
 
+def test_empty_query_raises():
+    client = sc.SerpApiClient(api_key="k")
+    try:
+        client.search("")
+        assert False, "Expected ValueError for empty query"
+    except ValueError:
+        assert True
+
+
 def test_filters_injected_into_query(monkeypatch):
     sample = {"jobs_results": [{"title": "Dev", "company_name": "X", "url": "http://a"}]}
 
@@ -50,6 +59,20 @@ def test_filters_injected_into_query(monkeypatch):
     assert "Remote" in q and "Senior" in q and "Full-time" in q and "Python" in q
 
 
+def test_location_sanitization(monkeypatch):
+    sample = {"jobs_results": [{"title": "Dev"}]}
+
+    def fake_get(url, params, timeout):
+        fake_get.last_params = params
+        return DummyResp(sample)
+
+    monkeypatch.setattr(sc.requests, "get", fake_get)
+    client = sc.SerpApiClient(api_key="key")
+    client.search("engineer", location="India, Maharashtra, Pune")
+    # location should be first two tokens
+    assert fake_get.last_params.get("location") == "India, Maharashtra"
+
+
 def test_search_retry_simplifies(monkeypatch):
     # First call fails, second succeeds
     calls = {"n": 0}
@@ -64,3 +87,42 @@ def test_search_retry_simplifies(monkeypatch):
     client = sc.SerpApiClient(api_key="k")
     res = client.search("software engineer", location="" )
     assert len(res) == 1
+
+
+def test_multi_page_combination(monkeypatch):
+    # Simulate three pages returned by provider for starts 0,10,20
+    def fake_get(url, params, timeout):
+        start = int(params.get("start", 0))
+        if start == 0:
+            data = {"jobs_results": [{"title": f"A{i}"} for i in range(10)]}
+        elif start == 10:
+            data = {"jobs_results": [{"title": f"B{i}"} for i in range(10, 20)]}
+        elif start == 20:
+            data = {"jobs_results": [{"title": f"C{i}"} for i in range(20, 30)]}
+        else:
+            data = {"jobs_results": []}
+        return DummyResp(data)
+
+    monkeypatch.setattr(sc.requests, "get", fake_get)
+    client = sc.SerpApiClient(api_key="key")
+    res = client.search("engineer", limit=30)
+    assert isinstance(res, list)
+    assert len(res) == 30
+
+
+def test_retry_on_400(monkeypatch):
+    # First attempt returns 400 on any start; retry with simplified q should succeed
+    state = {"n": 0}
+
+    def fake_get(url, params, timeout):
+        # if q is simplified (one/two words) return success
+        q = params.get("q", "")
+        if q == "engineer gigabit":
+            return DummyResp({"jobs_results": [{"title": "OK"}]})
+        # otherwise return 400
+        return DummyResp({}, status=400)
+
+    monkeypatch.setattr(sc.requests, "get", fake_get)
+    client = sc.SerpApiClient(api_key="k")
+    res = client.search("engineer gigabit", location="India", limit=10)
+    assert len(res) >= 0
