@@ -17,22 +17,30 @@ def normalize_job(raw: Dict) -> Job:
     location = _first(raw.get("location"), raw.get("formatted_location"), raw.get("city"))
     short = _first(raw.get("snippet"), raw.get("description"), raw.get("summary"))
     employment = _first(raw.get("employment_type"), raw.get("job_type"), "")
-    apply_link = _first(raw.get("url"), raw.get("link"), raw.get("apply_link"))
-    # fallback: look for related_links or first nested url
+
+    # Determine apply_link with a clear priority
+    apply_link = _first(
+        raw.get("apply_link"),
+        raw.get("job_apply_link"),
+        raw.get("url"),
+        raw.get("link"),
+    )
     if not apply_link:
         rl = raw.get("related_links") or raw.get("other_links") or raw.get("links")
         if isinstance(rl, list) and rl:
             first = rl[0]
-            if isinstance(first, dict) and "url" in first:
-                apply_link = first.get("url")
+            if isinstance(first, dict):
+                apply_link = first.get("link") or first.get("url")
             elif isinstance(first, str):
                 apply_link = first
-    source_site = _first(raw.get("source"), raw.get("site"), "unknown")
 
-    # Truncate short description to a few lines (approx 240 chars)
-    short_text = (short or "").strip()
-    if len(short_text) > 240:
-        short_text = short_text[:237].rstrip() + "..."
+    # Clean description: remove literal 'Description' header and trim to ~300 chars
+    short_text = (short or "").replace("Description", "").strip()
+    if len(short_text) > 300:
+        short_text = short_text[:297].rstrip() + "..."
+
+    # source_site: prefer explicit fields if present
+    source_site = _first(raw.get("source"), raw.get("site"), raw.get("source_site"), raw.get("company_website"))
 
     return Job(
         company_name=company or "",
@@ -40,7 +48,7 @@ def normalize_job(raw: Dict) -> Job:
         location=location or "",
         short_description=short_text,
         employment_type=employment or "",
-        source_site=source_site or "",
+        source_site=source_site or "unknown",
         apply_link=apply_link or "",
     )
 

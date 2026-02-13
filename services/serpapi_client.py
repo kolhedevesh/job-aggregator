@@ -1,5 +1,6 @@
 import os
-from typing import Any, Dict, List, Optional
+import logging
+from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 import streamlit as st
@@ -15,6 +16,10 @@ class SerpApiClient:
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("SERPAPI_API_KEY")
+        self.logger = logging.getLogger(__name__)
+        debug_flag = os.getenv("JOB_AGG_DEBUG", "false").lower() in ("1", "true", "yes")
+        if debug_flag:
+            self.logger.setLevel(logging.DEBUG)
 
     def search(
         self,
@@ -29,13 +34,25 @@ class SerpApiClient:
         if not self.api_key:
             raise RuntimeError("SERPAPI_API_KEY is not configured")
 
-        # Basic sanitization
+        # Basic sanitization and query-building
         q = (query or "").strip()
+        parts: List[str] = []
+        if q:
+            parts.append(q)
+        # If filters are provided but not supported as params by SerpAPI,
+        # we append them to the free-text query to influence results.
+        if remote:
+            parts.append(remote)
+        if experience_level:
+            parts.append(experience_level)
+        if employment_type:
+            parts.append(employment_type)
         if tech_stack:
-            q = f"{q} {tech_stack}".strip()
+            parts.append(tech_stack)
+        q_final = " ".join(parts).strip()
 
         # If query is empty, raise a friendly error
-        if not q:
+        if not q_final:
             raise ValueError("Query must include job title or keywords.")
 
         def _valid_location(loc: Optional[str]) -> Optional[str]:
@@ -53,7 +70,7 @@ class SerpApiClient:
 
         params: Dict[str, Any] = {
             "engine": "google_jobs",
-            "q": q,
+            "q": q_final,
             "api_key": self.api_key,
             "num": limit,
         }
@@ -73,7 +90,7 @@ class SerpApiClient:
                 # On first failure, simplify query and remove location/tech
                 if attempt == 0:
                     # keep first two words of q as simplified query
-                    simplified = " ".join(q.split()[:2])
+                    simplified = " ".join(q_final.split()[:2])
                     params["q"] = simplified
                     params.pop("location", None)
                     # don't include explicit tech stack
@@ -97,7 +114,7 @@ class SerpApiClient:
 
         # Ensure each result has a link if possible: try common fields and related links
         def _find_link(item: Dict[str, Any]) -> Optional[str]:
-            for key in ("url", "link", "apply_link"):
+            for key in ("apply_link", "job_apply_link", "url", "link"):
                 val = item.get(key)
                 if isinstance(val, str) and val:
                     return val
@@ -106,26 +123,25 @@ class SerpApiClient:
                 v = item.get(alt)
                 if isinstance(v, list) and v:
                     for entry in v:
-                        if isinstance(entry, dict) and "url" in entry:
-                            return entry.get("url")
+                        if isinstance(entry, dict):
+                            for subk in ("link", "url"):
+                                if subk in entry and isinstance(entry[subk], str):
+                                    return entry[subk]
                         if isinstance(entry, str):
                             return entry
             return None
 
         for it in results:
-            if not _find_link(it):
-                # try to populate from nested keys
-                link = None
-                for v in it.values():
-                    if isinstance(v, dict):
-                        for subk in ("url", "link"):
-                            if subk in v and isinstance(v[subk], str):
-                                link = v[subk]
-                                break
-                        if link:
-                            break
-                if link:
-                    it.setdefault("apply_link", link)
+            found = _find_link(it)
+            if found:
+                it.setdefault("apply_link", found)
+
+        # log params and count when debug enabled
+        try:
+            self.logger.debug("SerpAPI params: %s", params)
+            self.logger.debug("Jobs returned: %d", len(results))
+        except Exception:
+            pass
 
         return results
 

@@ -21,7 +21,14 @@ def render_job_card(job: Job, summary: Optional[str] = None, skills: Optional[st
     with cols[0]:
         st.subheader(f"{job.job_title}")
         st.write(f"**{job.company_name}** • {job.location}")
-        st.write(summary or job.short_description)
+        # Short description with 'Read more' for long text
+        desc = summary or job.short_description
+        if len(desc) > 200:
+            st.write(desc[:197].rstrip() + "...")
+            with st.expander("Read more"):
+                st.write(desc)
+        else:
+            st.write(desc)
         if skills:
             st.caption(f"Skills: {skills}")
     with cols[1]:
@@ -44,6 +51,7 @@ def main() -> None:
     tech_stack = st.sidebar.text_input("Tech stack (optional)")
     limit = st.sidebar.number_input("Max results", min_value=1, max_value=50, value=10)
     use_llm = st.sidebar.checkbox("Use local Ollama LLM for summaries and skills", value=False)
+    debug = st.sidebar.checkbox("Show debug logs", value=False)
     submit = st.sidebar.button("Search")
 
     # Session state for pagination
@@ -62,10 +70,20 @@ def main() -> None:
         try:
             st.info("Fetching jobs — this may take a few seconds.")
             with st.spinner("Fetching results..."):
+                # Build params dict for diagnostics display
+                params = {
+                    "engine": "google_jobs",
+                    "q": f"{query} {tech_stack}".strip(),
+                    "api_key": api_key,
+                    "num": 30,
+                }
+                if location and len(location.strip()) > 1 and not location.strip().isdigit():
+                    params["location"] = location.strip()
+
                 raw = cached_search(
                     api_key=api_key,
-                    q=f"{query} {tech_stack}".strip(),
-                    location=location or None,
+                    q=params["q"],
+                    location=params.get("location"),
                     remote=remote or None,
                     experience_level=experience or None,
                     employment_type=employment or None,
@@ -80,6 +98,10 @@ def main() -> None:
                 return
 
             total = len(jobs)
+            if debug:
+                st.info("Debug: SerpAPI parameters and counts")
+                st.write(params)
+                st.write({"jobs_returned": total})
             total_pages = math.ceil(total / page_size)
             page = int(st.session_state.page)
             page = max(1, min(page, total_pages))
