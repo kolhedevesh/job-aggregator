@@ -1,5 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv(dotenv_path='.env', override=True)
 from services.serpapi_client import SerpApiClient
 
 c = SerpApiClient()

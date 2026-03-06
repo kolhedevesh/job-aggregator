@@ -3,7 +3,6 @@ import os
 import math
 
 import streamlit as st
-from dotenv import load_dotenv
 
 from services.serpapi_client import cached_search, cached_search_page
 from services.job_normalizer import normalize_jobs
@@ -11,7 +10,18 @@ from services.llm_service import cached_summarize, cached_summarize_description
 from models.job import Job
 
 
-load_dotenv()
+def _is_streamlit_cloud() -> bool:
+    """Best-effort detection for Streamlit Community Cloud."""
+    flag = os.getenv("STREAMLIT_CLOUD")
+    if flag and flag.lower() in ("1", "true", "yes"):
+        return True
+    sharing = os.getenv("STREAMLIT_SHARING")
+    if sharing and sharing.lower() in ("1", "true", "yes"):
+        return True
+    runtime = os.getenv("STREAMLIT_RUNTIME_ENV")
+    if runtime and runtime.lower() == "cloud":
+        return True
+    return False
 
 
 def render_job_card(job: Job, summary: Optional[str] = None) -> None:
@@ -58,7 +68,11 @@ def main() -> None:
 
     # Trigger search when submit or when page changes (pagination handled below)
     if submit or st.session_state.page:
-        api_key = os.getenv("SERPAPI_API_KEY", "")
+        try:
+            api_key = st.secrets["SERPAPI_API_KEY"]
+        except Exception:
+            st.error("Missing SERPAPI_API_KEY in Streamlit secrets. Please configure it in Streamlit Community Cloud or .streamlit/secrets.toml.")
+            return
         try:
             st.info("Fetching jobs — this may take a few seconds.")
             with st.spinner("Fetching results..."):
@@ -101,8 +115,11 @@ def main() -> None:
 
                 # store token for next page (page+1) if provided by provider
                 next_token = meta.get("next_page_token") if isinstance(meta, dict) else None
+                # store only when present, otherwise remove stale token
                 if next_token:
                     st.session_state.page_tokens[page + 1] = next_token
+                else:
+                    st.session_state.page_tokens.pop(page + 1, None)
 
                 # expose meta for debug UI
                 results_meta = meta
@@ -116,7 +133,13 @@ def main() -> None:
 
             if debug:
                 st.info("Debug: SerpAPI parameters and counts")
-                st.write({"final_query": q_final, "start": start, "jobs_returned": jobs_returned})
+                st.write({
+                    "final_query": q_final,
+                    "page_index": page,
+                    "token_used": token_for_page,
+                    "token_returned": next_token,
+                    "jobs_returned": jobs_returned,
+                })
 
             st.success(f"Found {jobs_returned} jobs on this page (Page {page}).")
 
@@ -126,24 +149,39 @@ def main() -> None:
                     st.session_state.page = st.session_state.page - 1
 
             def _next():
-                # Only advance if this page was full (likely more results)
-                if jobs_returned >= page_size:
+                # Advance only if a token for next page exists
+                if st.session_state.page_tokens.get(page + 1):
                     st.session_state.page = st.session_state.page + 1
 
             cols = st.columns([1, 6, 1])
+            has_prev = st.session_state.page > 1
+            has_next = bool(st.session_state.page_tokens.get(page + 1))
+
             with cols[0]:
-                st.button("Prev", on_click=_prev, key="prev_btn")
+                if has_prev:
+                    st.button("Prev", on_click=_prev, key="prev_btn")
+                else:
+                    st.button("Prev", key="prev_btn", disabled=True)
             with cols[1]:
                 st.write(f"Page {page}")
             with cols[2]:
-                st.button("Next", on_click=_next, key="next_btn")
+                if has_next:
+                    st.button("Next", on_click=_next, key="next_btn")
+                else:
+                    st.button("Next", key="next_btn", disabled=True)
+                    if page > 0:
+                        st.info("No more results available.")
 
             ollama_host = os.getenv("OLLAMA_HOST")
             ollama_model = os.getenv("OLLAMA_MODEL")
+            allow_ollama_local = os.getenv("OLLAMA_ENABLE", "").lower() in ("1", "true", "yes")
+            ollama_enabled = use_llm and allow_ollama_local and not _is_streamlit_cloud()
+            if use_llm and not ollama_enabled:
+                st.info("Ollama summaries are disabled in Streamlit Community Cloud. Enable locally with OLLAMA_ENABLE=1.")
 
             # Prepare summaries for each job (store in Job.summary)
             for job in jobs:
-                if use_llm:
+                if ollama_enabled:
                     try:
                         s = cached_summarize_description(ollama_host, ollama_model, job.short_description)
                         if s:

@@ -1,6 +1,5 @@
 import os
 import logging
-from dotenv import load_dotenv
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
@@ -17,13 +16,10 @@ class SerpApiClient:
     BASE = "https://serpapi.com/search.json"
 
     def __init__(self, api_key: Optional[str] = None):
-        # Ensure .env is read when client is instantiated directly
         try:
-            load_dotenv(dotenv_path=".env", override=True)
+            self.api_key = api_key or st.secrets["SERPAPI_API_KEY"]
         except Exception:
-            pass
-
-        self.api_key = api_key or os.getenv("SERPAPI_API_KEY")
+            self.api_key = api_key
         self.logger = logging.getLogger(__name__)
         # Log presence only (do NOT log the actual key)
         try:
