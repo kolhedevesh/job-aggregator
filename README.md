@@ -1,34 +1,148 @@
-# Job Aggregator (Streamlit)
+Job Aggregator (AI-Ready Job Search Tool)
 
-Lightweight job-aggregator that queries SerpAPI (Google Jobs), normalizes results, and displays them in a Streamlit UI. Optional local Ollama LLM can summarize descriptions and extract skills.
+A Python-based job aggregation web application that collects job listings from multiple sources, normalizes them into a structured format, and displays them through an interactive Streamlit interface.
 
-Quickstart
+The platform supports filtering, pagination, and optional LLM-based summarization of job descriptions.
 
-1. Create a virtualenv and install deps:
+Live Demo
 
-```bash
+https://ai-job-aggregator.streamlit.app/
+
+
+
+Features
+
+Search jobs by title or keywords
+
+Filter by location
+
+Filter by experience level
+
+Filter by employment type
+
+Pagination for browsing large result sets
+
+Job listings normalized into a structured format
+
+Optional LLM-powered job description summarization
+
+Direct Apply links to job postings
+
+Clean and interactive Streamlit UI
+
+Tech Stack
+Backend
+
+Python
+
+Frontend
+
+Streamlit
+
+Data Source
+
+SerpAPI (Google Jobs API)
+
+AI / LLM
+
+Ollama (optional local LLM integration)
+
+Libraries
+
+requests
+
+python-dotenv
+
+typing-extensions
+
+Deployment
+
+Streamlit Community Cloud
+
+
+Architecture
+User
+↓
+Streamlit UI (app.py)
+↓
+SerpAPI Client
+↓
+Job Normalizer
+↓
+Optional LLM summarization (Ollama)
+↓
+Job Cards UI
+
+
+Project Structure
+job-aggregator
+│
+├── app.py                 # Streamlit UI
+├── models
+│   └── job.py             # Job data model
+│
+├── services
+│   ├── serpapi_client.py  # API integration
+│   ├── job_normalizer.py  # Data normalization
+│   └── llm_service.py     # LLM summarization
+│
+├── utils
+│   └── validators.py
+│
+├── scripts
+│   ├── debug_fetch.py
+│   └── check_apply.py
+│
+├── requirements.txt
+└── README.md
+
+
+
+Setup (Local Development)
+
+Clone the repository
+
+git clone https://github.com/kolhedevesh/job-aggregator.git
+cd job-aggregator
+
+Create a virtual environment
+
 python -m venv .venv
 source .venv/bin/activate
+
+Install dependencies
+
 pip install -r requirements.txt
-```
 
-2. Copy `.env.example` to `.env` and set `SERPAPI_API_KEY` and `OLLAMA_HOST` if using LLM.
+Create environment variables
 
-3. Run the app:
+cp .env.example .env
 
-```bash
+Add your API key
+
+SERPAPI_API_KEY=your_key_here
+
+Run the application
+
 streamlit run app.py
-```
+Future Improvements
 
-Notes
-- The app calls SerpAPI (`engine=google_jobs`) — ensure your key has access.
-- Ollama integration is optional; if the local server is unavailable, the app falls back to raw text.
+Resume upload + AI job matching
 
-Project layout
+Semantic search for job descriptions
 
-- `app.py` — Streamlit UI
-- `services/serpapi_client.py` — SerpAPI wrapper
-- `services/llm_service.py` — Ollama wrapper with graceful fallback
-- `services/job_normalizer.py` — Normalize raw results into `Job` model
-- `models/job.py` — `@dataclass` for normalized job
-- `utils/validators.py` — simple input validators
+Skill extraction from job listings
+
+Email job alerts
+
+Multi-source job aggregation (LinkedIn, Indeed, Naukri)
+
+
+
+Author
+
+Devesh Kolhe
+IIT Delhi | AI Product & Systems Enthusiast
+
+GitHub
+https://github.com/kolhedevesh
