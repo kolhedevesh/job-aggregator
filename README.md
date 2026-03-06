@@ -1,80 +1,73 @@
-Job Aggregator (AI-Ready Job Search Tool)
+# Job Aggregator (AI-Ready Job Search Tool)
 
 A Python-based job aggregation web application that collects job listings from multiple sources, normalizes them into a structured format, and displays them through an interactive Streamlit interface.
 
 The platform supports filtering, pagination, and optional LLM-based summarization of job descriptions.
 
-Live Demo
+---
+
+## Live Demo
 
 https://ai-job-aggregator.streamlit.app/
 
+---
 
+## Features
 
-Features
+- Search jobs by **title or keywords**
+- Filter by **location**
+- Filter by **experience level**
+- Filter by **employment type**
+- Pagination for browsing large result sets
+- Job listings normalized into a structured format
+- Optional **LLM-powered job description summarization**
+- Direct **Apply links** to job postings
+- Clean and interactive **Streamlit UI**
 
-Search jobs by title or keywords
+---
 
-Filter by location
+## Tech Stack
 
-Filter by experience level
-
-Filter by employment type
-
-Pagination for browsing large result sets
-
-Job listings normalized into a structured format
-
-Optional LLM-powered job description summarization
-
-Direct Apply links to job postings
-
-Clean and interactive Streamlit UI
-
-Tech Stack
 Backend
-
-Python
+- Python
 
 Frontend
-
-Streamlit
+- Streamlit
 
 Data Source
-
-SerpAPI (Google Jobs API)
+- SerpAPI (Google Jobs API)
 
 AI / LLM
-
-Ollama (optional local LLM integration)
+- Ollama (optional local LLM integration)
 
 Libraries
-
-requests
-
-python-dotenv
-
-typing-extensions
+- requests
+- python-dotenv
+- typing-extensions
 
 Deployment
+- Streamlit Community Cloud
 
-Streamlit Community Cloud
+---
 
+## Architecture
 
-Architecture
-User
-↓
-Streamlit UI (app.py)
-↓
-SerpAPI Client
-↓
-Job Normalizer
-↓
-Optional LLM summarization (Ollama)
-↓
-Job Cards UI
+User  
+↓  
+Streamlit UI (app.py)  
+↓  
+SerpAPI Client  
+↓  
+Job Normalizer  
+↓  
+Optional LLM summarization (Ollama)  
+↓  
+Job Cards UI  
 
+---
 
-Project Structure
+## Project Structure
+
 job-aggregator
 │
 ├── app.py                 # Streamlit UI
@@ -96,9 +89,9 @@ job-aggregator
 ├── requirements.txt
 └── README.md
 
+---
 
-
-Setup (Local Development)
+## Setup (Local Development)
 
 Clone the repository
 
@@ -125,24 +118,23 @@ SERPAPI_API_KEY=your_key_here
 Run the application
 
 streamlit run app.py
-Future Improvements
 
-Resume upload + AI job matching
+---
 
-Semantic search for job descriptions
+## Future Improvements
 
-Skill extraction from job listings
+- Resume upload + AI job matching
+- Semantic search for job descriptions
+- Skill extraction from job listings
+- Email job alerts
+- Multi-source job aggregation (LinkedIn, Indeed, Naukri)
 
-Email job alerts
+---
 
-Multi-source job aggregation (LinkedIn, Indeed, Naukri)
+## Author
 
+Devesh Kolhe  
+IIT Delhi | AI Product & Systems Enthusiast  
 
-
-Author
-
-Devesh Kolhe
-IIT Delhi | AI Product & Systems Enthusiast
-
-GitHub
+GitHub  
 https://github.com/kolhedevesh
